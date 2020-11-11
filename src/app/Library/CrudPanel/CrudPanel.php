@@ -28,6 +28,7 @@ use Backpack\CRUD\app\Library\CrudPanel\Traits\Tabs;
 use Backpack\CRUD\app\Library\CrudPanel\Traits\Update;
 use Backpack\CRUD\app\Library\CrudPanel\Traits\Validation;
 use Backpack\CRUD\app\Library\CrudPanel\Traits\Views;
+use Backpack\PermissionManager\PanelTraits\Permissions;
 use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -37,7 +38,7 @@ use Illuminate\Support\Arr;
 class CrudPanel
 {
     // load all the default CrudPanel features
-    use Create, Read, Search, Update, Delete, Errors, Reorder, Access, Columns, Fields, Query, Buttons, AutoSet, FakeFields, FakeColumns, AutoFocus, Filters, Tabs, Views, Validation, HeadingsAndTitles, Operations, SaveActions, Settings, Relationships;
+    use Create, Read, Search, Update, Delete, Errors, Reorder, Access, Columns, Fields, Query, Buttons, AutoSet, FakeFields, FakeColumns, AutoFocus, Filters, Tabs, Views, Validation, HeadingsAndTitles, Operations, SaveActions, Settings, Relationships, Permissions;
     // allow developers to add their own closures to this object
     use Macroable;
 
@@ -56,7 +57,7 @@ class CrudPanel
     public $entry;
 
     protected $request;
-
+    public $controller; // a reference to the controller from which this CrudPanel was instantiated
     // The following methods are used in CrudController or your EntityCrudController to manipulate the variables above.
 
     public function __construct()
@@ -101,11 +102,11 @@ class CrudPanel
      */
     public function setModel($model_namespace)
     {
-        if (! class_exists($model_namespace)) {
+        if (!class_exists($model_namespace)) {
             throw new \Exception('The model does not exist.', 500);
         }
 
-        if (! method_exists($model_namespace, 'hasCrudTrait')) {
+        if (!method_exists($model_namespace, 'hasCrudTrait')) {
             throw new \Exception('Please use CrudTrait on the model.', 500);
         }
 
@@ -166,9 +167,9 @@ class CrudPanel
      */
     public function setRouteName($route, $parameters = [])
     {
-        $complete_route = $route.'.index';
+        $complete_route = $route . '.index';
 
-        if (! \Route::has($complete_route)) {
+        if (!\Route::has($complete_route)) {
             throw new \Exception('There are no routes for this route name.', 404);
         }
 
@@ -285,7 +286,7 @@ class CrudPanel
 
     public function sync($type, $fields, $attributes)
     {
-        if (! empty($this->{$type})) {
+        if (!empty($this->{$type})) {
             $this->{$type} = array_map(function ($field) use ($fields, $attributes) {
                 if (in_array($field['name'], (array) $fields)) {
                     $field = array_merge($field, $attributes);
@@ -317,11 +318,11 @@ class CrudPanel
     {
         $relationArray = explode('.', $relationString);
 
-        if (! isset($length)) {
+        if (!isset($length)) {
             $length = count($relationArray);
         }
 
-        if (! isset($model)) {
+        if (!isset($model)) {
             $model = $this->model;
         }
 
@@ -361,7 +362,7 @@ class CrudPanel
             if (is_array($entries)) {
                 //if attribute does not exist in main array we have more than one entry OR the attribute
                 //is an acessor that is not in $appends property of model.
-                if (! isset($entries[$attribute])) {
+                if (!isset($entries[$attribute])) {
                     //we first check if we don't have the attribute because it's and acessor that is not in appends.
                     if ($model_instance->hasGetMutator($attribute) && isset($entries[$modelKey])) {
                         $entry_in_database = $model_instance->find($entries[$modelKey]);
@@ -401,21 +402,21 @@ class CrudPanel
      */
     public function parseTranslatableAttributes($model, $attribute, $value)
     {
-        if (! method_exists($model, 'isTranslatableAttribute')) {
+        if (!method_exists($model, 'isTranslatableAttribute')) {
             return $value;
         }
 
-        if (! $model->isTranslatableAttribute($attribute)) {
+        if (!$model->isTranslatableAttribute($attribute)) {
             return $value;
         }
 
-        if (! is_array($value)) {
+        if (!is_array($value)) {
             $decodedAttribute = json_decode($value, true);
         } else {
             $decodedAttribute = $value;
         }
 
-        if (is_array($decodedAttribute) && ! empty($decodedAttribute)) {
+        if (is_array($decodedAttribute) && !empty($decodedAttribute)) {
             if (isset($decodedAttribute[app()->getLocale()])) {
                 return $decodedAttribute[app()->getLocale()];
             } else {
@@ -442,7 +443,7 @@ class CrudPanel
         $relation = $model->{$firstRelationName};
 
         $results = [];
-        if (! is_null($relation)) {
+        if (!is_null($relation)) {
             if ($relation instanceof Collection) {
                 $currentResults = $relation->all();
             } elseif (is_array($relation)) {
@@ -455,7 +456,7 @@ class CrudPanel
 
             array_shift($relationArray);
 
-            if (! empty($relationArray)) {
+            if (!empty($relationArray)) {
                 foreach ($currentResults as $currentResult) {
                     $results = array_merge_recursive($results, $this->getRelatedEntries($currentResult, implode('.', $relationArray)));
                 }
